@@ -1,9 +1,9 @@
 mod tab;
 
-use crate::tab::bedrock::bedrock_tab::{BdrkTab};
+use crate::tab::bedrock::bedrock_tab::BdrkTab;
 use crate::tab::controls::{ControlMenu, ControlMessage};
-use iced::{Application, Element, Settings, Theme, Command, Subscription, event, Event, keyboard};
 use iced::keyboard::key::Named;
+use iced::{event, keyboard, Application, Command, Element, Event, Settings, Subscription, Theme};
 
 fn main() -> iced::Result {
     <State as Application>::run(Settings::default())
@@ -52,7 +52,7 @@ impl Application for State {
         }
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         self.bedrock_menu.view().map(Message::ControlMessage)
     }
 

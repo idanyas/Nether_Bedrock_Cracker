@@ -1,8 +1,9 @@
-use java_random::JAVA_LCG;
-use crate::{MASK48};
 use crate::raw_data::block::Block;
 use crate::raw_data::block_type::BlockType;
 use crate::raw_data::modes::BedrockGeneration;
+use crate::MASK48;
+use bytemuck::{Pod, Zeroable};
+use java_random::JAVA_LCG;
 
 #[derive(Clone, Debug)]
 pub struct BlockFilter {
@@ -43,7 +44,7 @@ impl BlockFilter {
         )
     }
 
-    //Figure out how many seeds an operation filters
+    /// Figure out how many seeds an operation filters
     pub fn discarded_seeds(&self, lower_bits: u64) -> f64 {
         let lower_bits_mask = (1 << lower_bits) - 1;
         let bound = self.bound() + lower_bits_mask * JAVA_LCG.multiplier;
@@ -55,7 +56,7 @@ impl BlockFilter {
         fail_chance * (1 << lower_bits) as f64
     }
 
-    //the chance for new info decreases
+    /// The chance for new info decreases as we use more bits
     fn check_with_bits(&mut self, lower_bits: u64) {
         let lower_bits_mask = (1 << lower_bits) - 1;
         let jiggle_room = lower_bits_mask * JAVA_LCG.multiplier;
@@ -102,17 +103,16 @@ impl BlockFilter {
         lower_bound *= MASK48 as f64;
         upper_bound *= MASK48 as f64;
 
-        //println!("lower_bound: {lower_bound}, upper_bound: {upper_bound}");
-
         (lower_bound as u64, upper_bound as u64)
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Default, Copy, Pod, Zeroable)]
 pub struct CheckObject {
-    pos_hash: u64,
-    condition: u64,
-    offset: u64,
+    pub pos_hash: u64,
+    pub condition: u64,
+    pub offset: u64,
 }
 
 impl CheckObject {
@@ -129,6 +129,9 @@ impl CheckObject {
         }
     }
 
+    /// Check if this seed FAILS the check (should be rejected)
+    /// Returns true if seed is INCONSISTENT with this block
+    /// Returns false if seed is CONSISTENT with this block (passes)
     #[inline(always)]
     pub fn check(&self, upper_bits: u64) -> bool {
         ((upper_bits ^ self.pos_hash)
@@ -139,7 +142,8 @@ impl CheckObject {
     }
 }
 
-
+/// Calculate the filter power of a set of blocks
+/// Lower value = more filtering power = fewer expected results
 pub fn get_filter_power(filters: &[BlockFilter]) -> u64 {
     let resulting_seeds: f64 = filters
         .iter()
@@ -151,11 +155,11 @@ pub fn get_filter_power(filters: &[BlockFilter]) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use java_random::JAVA_LCG;
     use crate::block_data::{BlockFilter, CheckObject};
-    use crate::MASK48;
     use crate::raw_data::block_type::BlockType;
     use crate::raw_data::modes::BedrockGeneration;
+    use crate::MASK48;
+    use java_random::JAVA_LCG;
 
     #[test]
     fn test_hashcode() {
@@ -165,6 +169,25 @@ mod tests {
 
     #[test]
     fn test_filler_check() {
-        assert!(!CheckObject::default().check(MASK48))
+        // Default CheckObject should always pass (return false)
+        assert!(!CheckObject::default().check(MASK48));
+        assert!(!CheckObject::default().check(0));
+        assert!(!CheckObject::default().check(12345));
+    }
+
+    #[test]
+    fn test_check_semantics() {
+        // Verify check returns true for FAIL, false for PASS
+        // A bedrock block at y=4 should have upper_bound = 0.2 * MASK48
+        let mut filter = BlockFilter::new(0, 4, 0, BlockType::BEDROCK, BedrockGeneration::Normal);
+        let check = filter.create_check(0);
+        
+        // The check is: ((seed ^ pos_hash) * mult + offset) & MASK48 < condition
+        // For valid seeds, the result should be >= condition (return false)
+        // For invalid seeds, the result should be < condition (return true)
+        
+        // We can't easily compute valid seeds here, but we can verify the structure
+        assert!(check.condition > 0, "Condition should be positive");
+        assert!(check.offset > 0, "Offset should be positive for bedrock at y=4");
     }
 }

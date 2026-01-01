@@ -12,4 +12,3 @@ async-std = "1.12"
 num_cpus = "1.16"
 rfd = { version = "0.14", default-features = false, features = ["tokio","xdg-portal"]}
 bedrock_cracker = { path = "../bedrock_cracker", features = ["tokio"] }
-

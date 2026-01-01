@@ -1,7 +1,7 @@
+use iced::border::Radius;
 use iced::theme::TextInput;
 use iced::widget::text_input;
 use iced::{Border, Color, Theme};
-use iced::border::Radius;
 
 pub struct TextInputErrorStyle;
 

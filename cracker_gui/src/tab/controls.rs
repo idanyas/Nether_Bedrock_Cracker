@@ -1,8 +1,8 @@
-use crate::tab::bedrock::bedrock_tab::{BdrkMessage};
+use crate::tab::bedrock::bedrock_tab::BdrkMessage;
 
 use async_std::fs;
 use iced::alignment::{Horizontal, Vertical};
-use iced::widget::{button, Column, Container, progress_bar, Row, Scrollable, text, text_input};
+use iced::widget::{button, progress_bar, text, text_input, Column, Container, Row, Scrollable};
 use iced::{Command, Element, Length, Subscription};
 use rfd::AsyncFileDialog;
 use std::fmt;
@@ -44,7 +44,7 @@ where
         }
     }
 
-    pub fn view(&self) -> Element<ControlMessage> {
+    pub fn view(&self) -> Element<'_, ControlMessage> {
         // coords
         let coord_list = self.tab.view().map(ControlMessage::TabMessage);
 
@@ -127,7 +127,9 @@ where
                         usize::saturating_sub(1000, meta_data.results.len());
                     results_to_be_added = usize::min(results_to_be_added, results.len());
 
-                    meta_data.results.extend(results.into_iter().take(results_to_be_added));
+                    meta_data
+                        .results
+                        .extend(results.into_iter().take(results_to_be_added));
 
                     if meta_data.results_found > 10000000 {
                         self.end_crack(true);
@@ -166,13 +168,13 @@ where
             }
             ControlMessage::TabMessage(msg) => {
                 return self.tab.update(msg.into()).map(ControlMessage::TabMessage);
-            },
+            }
             ControlMessage::None => {}
         }
         Command::none()
     }
 
-    fn view_control_panel(&self) -> Element<ControlMessage> {
+    fn view_control_panel(&self) -> Element<'_, ControlMessage> {
         let mut row = Row::new();
         if self.cracking == CrackerState::Idle {
             row = row.push(
@@ -323,7 +325,7 @@ pub trait ApplicationTab {
 
     fn update(&mut self, message: Self::Message) -> Command<TabMessage>;
 
-    fn view(&self) -> Element<TabMessage>;
+    fn view(&self) -> Element<'_, TabMessage>;
 
     fn poll_cracker(&self, state: &CrackerState, threads: &str) -> Subscription<CrackerEvent>;
 }

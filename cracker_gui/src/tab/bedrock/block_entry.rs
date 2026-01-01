@@ -113,7 +113,7 @@ impl Block {
         }
     }
 
-    pub fn view(&self, last: bool) -> Element<BlockMessage> {
+    pub fn view(&self, last: bool) -> Element<'_, BlockMessage> {
         let x = self.x.view(last, self.duplicate, BlockMessage::EditedX);
         let y = self.y.view(last, self.duplicate, BlockMessage::EditedY);
         let z = self.z.view(last, self.duplicate, BlockMessage::EditedZ);
