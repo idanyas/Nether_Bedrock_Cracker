@@ -18,7 +18,7 @@ impl BlockFilter {
         Self::new(b.x, b.y, b.z, b.block_type, mode)
     }
 
-    fn new(x: i32, mut y: i32, z: i32, block_type: BlockType, mode: BedrockGeneration) -> Self {
+    pub fn new(x: i32, mut y: i32, z: i32, block_type: BlockType, mode: BedrockGeneration) -> Self {
         let (lower_bound, upper_bound) = Self::bounds(y, block_type);
         if mode == BedrockGeneration::Paper1_18 {
             y = if y > 5 { 122 } else { 0 }
@@ -181,13 +181,45 @@ mod tests {
         // A bedrock block at y=4 should have upper_bound = 0.2 * MASK48
         let mut filter = BlockFilter::new(0, 4, 0, BlockType::BEDROCK, BedrockGeneration::Normal);
         let check = filter.create_check(0);
-        
+
         // The check is: ((seed ^ pos_hash) * mult + offset) & MASK48 < condition
         // For valid seeds, the result should be >= condition (return false)
         // For invalid seeds, the result should be < condition (return true)
-        
+
         // We can't easily compute valid seeds here, but we can verify the structure
         assert!(check.condition > 0, "Condition should be positive");
         assert!(check.offset > 0, "Offset should be positive for bedrock at y=4");
+    }
+
+    #[test]
+    fn test_bounds_floor_bedrock() {
+        // For bedrock at y=4 (floor), probability is (5-4)/5 = 0.2
+        // So upper_bound = 0.2 * MASK48
+        let (lower, upper) = BlockFilter::bounds(4, BlockType::BEDROCK);
+        assert_eq!(lower, 0);
+        let expected_upper = (0.2 * MASK48 as f64) as u64;
+        assert!((upper as i64 - expected_upper as i64).abs() < 2,
+                "upper={} expected={}", upper, expected_upper);
+    }
+
+    #[test]
+    fn test_bounds_floor_other() {
+        // For non-bedrock at y=4 (floor), probability is 1 - 0.2 = 0.8
+        // So lower_bound = 0.2 * MASK48
+        let (lower, upper) = BlockFilter::bounds(4, BlockType::OTHER);
+        let expected_lower = (0.2 * MASK48 as f64) as u64;
+        assert!((lower as i64 - expected_lower as i64).abs() < 2);
+        assert_eq!(upper, MASK48 as u64);
+    }
+
+    #[test]
+    fn test_bounds_roof_bedrock() {
+        // For bedrock at y=123 (roof), layer = 123-122 = 1
+        // Probability is (5-1)/5 = 0.8
+        // So lower_bound = 0.8 * MASK48
+        let (lower, upper) = BlockFilter::bounds(123, BlockType::BEDROCK);
+        let expected_lower = (0.8 * MASK48 as f64) as u64;
+        assert!((lower as i64 - expected_lower as i64).abs() < 2);
+        assert_eq!(upper, MASK48 as u64);
     }
 }
